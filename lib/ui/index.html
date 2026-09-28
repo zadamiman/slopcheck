@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>slopcheck UI - AI Slop & Tells Inspector</title>
+  <style>
+    :root {
+      --bg: #09090b;
+      --card: #121215;
+      --card-hover: #18181b;
+      --border: #27272a;
+      --border-focus: #3f3f46;
+      --text: #f4f4f5;
+      --muted: #a1a1aa;
+      --error-bg: #450a0a;
+      --error-text: #f87171;
+      --error-border: #991b1b;
+      --warn-bg: #451a03;
+      --warn-text: #fbbf24;
+      --warn-border: #92400e;
+      --info-bg: #082f49;
+      --info-text: #38bdf8;
+      --info-border: #0369a1;
+      --accent: #10b981;
+      --accent-hover: #059669;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* Top Navigation */
+    header {
+      height: 56px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      background: rgba(18, 18, 21, 0.8);
+      backdrop-filter: blur(10px);
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: -0.02em;
+    }
+    .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+    }
+
+    .actions { display: flex; gap: 8px; align-items: center; }
+    button {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    button:hover { background: var(--card-hover); border-color: var(--border-focus); }
+    button.primary { background: var(--accent); color: #000; border: none; font-weight: 600; }
+    button.primary:hover { background: var(--accent-hover); }
+
+    /* Main Workspace */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      height: calc(100vh - 56px);
+    }
+
+    /* Editor Pane */
+    .editor-pane {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      position: relative;
+    }
+    .pane-header {
+      height: 40px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-size: 12px;
+      color: var(--muted);
+      background: #0d0d10;
+    }
+    textarea {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      padding: 16px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      resize: none;
+      outline: none;
+      white-space: pre-wrap;
+    }
+
+    /* Diagnostics Pane */
+    .diagnostics-pane {
+      display: flex;
+      flex-direction: column;
+      background: #0b0b0e;
+      overflow: hidden;
+    }
+    .issues-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .issue-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: border-color 0.15s;
+    }
+    .issue-card:hover { border-color: var(--border-focus); }
+    .issue-card.error { border-left: 3px solid var(--error-border); }
+    .issue-card.warning { border-left: 3px solid var(--warn-border); }
+    .issue-card.info { border-left: 3px solid var(--info-border); }
+
+    .issue-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+    }
+    .issue-tag {
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+    .issue-tag.error { background: var(--error-bg); color: var(--error-text); }
+    .issue-tag.warning { background: var(--warn-bg); color: var(--warn-text); }
+    .issue-tag.info { background: var(--info-bg); color: var(--info-text); }
+
+    .issue-location { color: var(--muted); font-family: monospace; }
+    .issue-msg { color: var(--text); line-height: 1.4; }
+    .issue-match {
+      background: #18181b;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #fbbf24;
+      align-self: flex-start;
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--muted);
+      text-align: center;
+      gap: 8px;
+      padding: 24px;
+    }
+    .empty-icon { font-size: 32px; color: var(--accent); }
+
+    /* Summary Bar */
+    .summary-bar {
+      display: flex;
+      gap: 12px;
+      font-size: 12px;
+    }
+    .stat-pill {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 500;
+    }
+    .stat-pill.error { color: var(--error-text); }
+    .stat-pill.warn { color: var(--warn-text); }
+    .stat-pill.clean { color: var(--accent); }
+
+    /* Toast Notification */
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #18181b;
+      border: 1px solid var(--border-focus);
+      color: var(--text);
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.2s ease;
+      pointer-events: none;
+      z-index: 100;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span>🛡️ slopcheck</span>
+      <span class="badge">v1.1.0</span>
+    </div>
+
+    <div class="summary-bar" id="summaryBar">
+      <span class="stat-pill clean" id="statusPill">✔ Clean</span>
+    </div>
+
+    <div class="actions">
+      <button id="btnSample">Load Sample</button>
+      <button id="btnAutoFix">✨ Auto-Fix Safe</button>
+      <button id="btnClear">Clear</button>
+      <button id="btnCopy" class="primary">Copy Clean</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="editor-pane">
+      <div class="pane-header">
+        <span>INPUT (MARKDOWN / TEXT / CODE)</span>
+        <span id="charCount">0 chars • 0 lines</span>
+      </div>
+      <textarea id="editor" placeholder="Paste your markdown, marketing copy, or code here to audit AI slop..."></textarea>
+    </section>
+
+    <section class="diagnostics-pane">
+      <div class="pane-header">
+        <span>DIAGNOSTICS & TELLS</span>
+        <span id="issueCount">0 issues</span>
+      </div>
+      <div class="issues-list" id="issuesList">
+        <div class="empty-state">
+          <div class="empty-icon">✔</div>
+          <div style="font-weight: 600; color: var(--text);">No AI Slop Found</div>
+          <div style="font-size: 12px;">Type or paste text on the left to start real-time scanning.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast"></div>
+
+  <script>
+    const editor = document.getElementById('editor');
+    const issuesList = document.getElementById('issuesList');
+    const charCount = document.getElementById('charCount');
+    const issueCount = document.getElementById('issueCount');
+    const statusPill = document.getElementById('statusPill');
+    const btnSample = document.getElementById('btnSample');
+    const btnAutoFix = document.getElementById('btnAutoFix');
+    const btnClear = document.getElementById('btnClear');
+    const btnCopy = document.getElementById('btnCopy');
+    const toast = document.getElementById('toast');
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    const SAMPLE_SLOP = `# Next-Generation Cloud Platform
+
+Let's delve into our seamless architecture — it is truly a game-changer for engineering teams.
+
+- **Performance:** Performance is elevated to the next level.
+- **Tapestry:** A rich tapestry of cutting-edge solutions.
+
+We manage everything from first click to final invoice, and everything in between.
+The future looks bright as we unlock the true power of AI.
+
+I hope this helps! Let me know if you have questions.`;
+
+    async function lint() {
+      const content = editor.value;
+      const lines = content.split('\n');
+      charCount.textContent = `${content.length} chars • ${lines.length} lines`;
+
+      if (!content.trim()) {
+        issuesList.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📝</div>
+            <div style="font-weight: 600; color: var(--text);">Editor Empty</div>
+            <div style="font-size: 12px;">Paste text to inspect.</div>
+          </div>`;
+        issueCount.textContent = '0 issues';
+        statusPill.className = 'stat-pill clean';
+        statusPill.textContent = '✔ Empty';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/lint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content, filename: 'editor.md' })
+        });
+        const data = await res.json();
+        renderIssues(data.issues);
+      } catch (err) {
+        console.error("Lint error:", err);
+      }
+    }
+
+    function renderIssues(issues) {
+      issueCount.textContent = `${issues.length} issue${issues.length === 1 ? '' : 's'}`;
+
+      if (issues.length === 0) {
+        statusPill.className = 'stat-pill clean';
+        statusPill.textContent = '✔ No Slop Found';
+        issuesList.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">✔</div>
+            <div style="font-weight: 600; color: var(--text);">100% Clean!</div>
+            <div style="font-size: 12px;">No buzzwords, em dashes, or structural AI tells found.</div>
+          </div>`;
+        return;
+      }
+
+      const errorCount = issues.filter(i => i.severity === 'error').length;
+      const warnCount = issues.filter(i => i.severity === 'warning').length;
+
+      if (errorCount > 0) {
+        statusPill.className = 'stat-pill error';
+        statusPill.textContent = `✖ ${errorCount} error${errorCount > 1 ? 's' : ''}, ${warnCount} warning${warnCount > 1 ? 's' : ''}`;
+      } else {
+        statusPill.className = 'stat-pill warn';
+        statusPill.textContent = `⚠️ ${warnCount} warning${warnCount > 1 ? 's' : ''}`;
+      }
+
+      issuesList.innerHTML = issues.map(issue => `
+        <div class="issue-card ${issue.severity}">
+          <div class="issue-header">
+            <span class="issue-tag ${issue.severity}">${issue.severity}</span>
+            <span class="issue-location">Line ${issue.line}:${issue.column}</span>
+          </div>
+          <div class="issue-msg">${escapeHtml(issue.message)}</div>
+          ${issue.match ? `<div class="issue-match">${escapeHtml(issue.match)}</div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[tag] || tag));
+    }
+
+    let debounceTimer;
+    editor.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(lint, 150);
+    });
+
+    btnSample.addEventListener('click', () => {
+      editor.value = SAMPLE_SLOP;
+      lint();
+      showToast('Loaded sample text with AI slop');
+    });
+
+    btnClear.addEventListener('click', () => {
+      editor.value = '';
+      lint();
+    });
+
+    btnCopy.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(editor.value);
+      showToast('Copied editor content to clipboard');
+    });
+
+    btnAutoFix.addEventListener('click', async () => {
+      const content = editor.value;
+      if (!content.trim()) return;
+
+      try {
+        const res = await fetch('/api/fix', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content })
+        });
+        const data = await res.json();
+        editor.value = data.cleanContent;
+        lint();
+        showToast(`Auto-fixed ${data.fixedCount} safe item(s)!`);
+      } catch (err) {
+        showToast('Failed to auto-fix');
+      }
+    });
+
+    // Initial load
+    lint();
+  </script>
+</body>
+</html>

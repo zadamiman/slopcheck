@@ -4,6 +4,7 @@ Zero-dependency CLI and linter to detect AI-generated slop, tells, buzzwords, an
 
 ## Features
 
+- **Interactive Web UI**: Built-in visual playground and editor with real-time feedback and auto-fix.
 - **Fast & Zero Dependencies**: Runs directly on Node.js standard library.
 - **Vocabulary Checks**: Detects empty verbs and nouns (`delve`, `tapestry`, `game-changer`, `seamless`).
 - **Punctuation Hygiene**: Flags forbidden em dashes (`—`), double-hyphens, and scare quotes.
@@ -36,6 +37,7 @@ git diff | slopcheck --stdin
 Options:
 
 ```
+  -u, --ui [port]                     Launch the interactive Web UI (default port: 3456)
   -f, --format <pretty|json|github>   Output format (default: pretty)
   -w, --warn-only                     Do not exit with code 1 on errors
   -s, --stdin                         Read input from standard input

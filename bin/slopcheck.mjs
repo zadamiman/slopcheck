@@ -3,18 +3,21 @@ import process from "node:process";
 import fs from "node:fs";
 import { resolveFiles, lintFile, lintContent } from "../lib/index.mjs";
 import { formatPretty, formatJson, formatGithub } from "../lib/reporter.mjs";
+import { startServer } from "../lib/server.mjs";
 
 const args = process.argv.slice(2);
 
 function showHelp() {
   console.log(`
-slopcheck v1.0.0 - Fast, zero-dependency AI slop & tells linter
+slopcheck v1.1.0 - Fast, zero-dependency AI slop & tells linter
 
 Usage:
   slopcheck [options] <files/directories...>
+  slopcheck --ui [port]
   cat doc.md | slopcheck --stdin
 
 Options:
+  -u, --ui [port]                     Launch the interactive Web UI (default port: 3456)
   -f, --format <pretty|json|github>   Output format (default: pretty)
   -w, --warn-only                     Do not exit with code 1 on errors
   -s, --stdin                         Read input from standard input
@@ -30,8 +33,23 @@ async function main() {
   }
 
   if (args.includes("-v") || args.includes("--version")) {
-    console.log("1.0.0");
+    console.log("1.1.0");
     process.exit(0);
+  }
+
+  // Handle --ui / -u
+  const uiIndex = args.findIndex(arg => arg === "-u" || arg === "--ui");
+  if (uiIndex !== -1 || args.some(arg => arg.startsWith("--ui="))) {
+    let port = 3456;
+    if (uiIndex !== -1 && args[uiIndex + 1] && !args[uiIndex + 1].startsWith("-")) {
+      port = parseInt(args[uiIndex + 1], 10) || 3456;
+    } else {
+      const uiEq = args.find(arg => arg.startsWith("--ui="));
+      if (uiEq) port = parseInt(uiEq.split("=")[1], 10) || 3456;
+    }
+
+    await startServer({ port, openBrowser: true });
+    return;
   }
 
   let format = "pretty";
