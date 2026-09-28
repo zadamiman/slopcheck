@@ -1,0 +1,33 @@
+{
+  "name": "slopcheck",
+  "version": "1.0.0",
+  "description": "Zero-dependency CLI and linter to detect AI-generated slop, tells, buzzwords, and structural defects in text, markdown, and code comments.",
+  "type": "module",
+  "main": "lib/index.mjs",
+  "types": "types/index.d.ts",
+  "bin": {
+    "slopcheck": "bin/slopcheck.mjs"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "lint": "node bin/slopcheck.mjs README.md"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "anti-slop",
+    "linter",
+    "ai-detection",
+    "markdown-linter",
+    "copywriting",
+    "cli",
+    "quality-gate"
+  ],
+  "author": "zlixv",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zadamiman/slopcheck.git"
+  }
+}
